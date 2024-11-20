@@ -1,75 +1,65 @@
 import streamlit as st
 import google.generativeai as genai
+import pandas as pd
 import re
 from typing import Dict, List
 
-# Configure API key securely
+# Configure the API key securely from Streamlit's secrets
+# Make sure to add GOOGLE_API_KEY and GEMINI_API_KEY in secrets.toml (for local) or Streamlit Cloud Secrets
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
 # Streamlit App UI
-st.title("Email Analysis and Culprit Detection")
+st.title("Email Analysis App")
 
 # Email input field
 email_text = st.text_area("Enter email text:", height=200)
 
-# Analysis options
-analysis_options = st.expander("Analysis Options")
-with analysis_options:
-    root_cause_analysis = st.checkbox("Root Cause Analysis")
-    culprit_detection = st.checkbox("Culprit Detection")
-    sentiment_analysis = st.checkbox("Sentiment Analysis")
-    entity_extraction = st.checkbox("Entity Extraction")
-
 # Button to analyze email
 if st.button("Analyze Email"):
     try:
-        # Load and configure Gemini model
+        # Load and configure the model
         model = genai.GenerativeModel('gemini-1.5-flash')
         
         # Preprocess email text
         email_text = email_text.strip()
         email_lines = email_text.split('\n')
         
-        # Tokenize email text using built-in split() function
-        tokens = email_text.split()
+        # Extract relevant information
+        subject = None
+        sender = None
+        recipients = []
+        body = []
+        for line in email_lines:
+            if line.startswith('Subject: '):
+                subject = line[9:].strip()
+            elif line.startswith('From: '):
+                sender = line[6:].strip()
+            elif line.startswith('To: '):
+                recipients = line[4:].strip().split(',')
+            else:
+                body.append(line)
         
         # Generate analysis using Gemini API
-        prompt = f"Analyze email with tokens {tokens}. "
-        if root_cause_analysis:
-            prompt += "Identify root cause using causal analysis. "
-        if culprit_detection:
-            prompt += "Detect culprit using named entity recognition. "
-        if sentiment_analysis:
-            prompt += "Perform sentiment analysis using sentiment classification. "
-        if entity_extraction:
-            prompt += "Extract relevant entities using named entity recognition. "
-        
+        prompt = f"Analyze email with subject '{subject}' from {sender} to {recipients}. Identify root cause and culprit."
         response = model.generate_content(prompt)
         
         # Parse response
         analysis: Dict[str, str] = {}
         for line in response.text.split('\n'):
-            match = re.match(r'^(Root Cause|Culprit|Sentiment|Entity): (.*)$', line)
+            match = re.match(r'^(Root Cause|Culprit): (.*)$', line)
             if match:
                 analysis[match.group(1)] = match.group(2)
         
-        # Post-processing
-        if root_cause_analysis:
-            root_cause = analysis.get('Root Cause', '')
-            root_cause = re.sub(r'\[.*?\]', '', root_cause)  # Remove Gemini's confidence scores
-        if culprit_detection:
-            culprit = analysis.get('Culprit', '')
-            culprit = re.sub(r'\[.*?\]', '', culprit)  # Remove Gemini's confidence scores
-        
         # Display analysis in Streamlit
         st.write("Analysis:")
-        if root_cause_analysis:
-            st.write(f"**Root Cause:** {root_cause}")
-        if culprit_detection:
-            st.write(f"**Culprit:** {culprit}")
-        if sentiment_analysis:
-            st.write(f"**Sentiment:** {analysis.get('Sentiment', 'Not analyzed')}")
-        if entity_extraction:
-            st.write(f"**Entities:** {analysis.get('Entity', 'Not extracted')}")
+        st.write(f"**Subject:** {subject}")
+        st.write(f"**Sender:** {sender}")
+        st.write(f"**Recipients:** {', '.join(recipients)}")
+        st.write(f"**Root Cause:** {analysis.get('Root Cause', 'Not identified')}")
+        st.write(f"**Culprit:** {analysis.get('Culprit', 'Not identified')}")
+        
+        # Display email body
+        st.write("Email Body:")
+        st.write('\n'.join(body))
     except Exception as e:
         st.error(f"Error: {e}")
