@@ -2,8 +2,7 @@ import streamlit as st
 import google.generativeai as genai
 import re
 import nltk
-from nltk.tokenize import word_tokenize
-from nltk.corpus import stopwords
+from nltk.tokenize import wordpiece_tokenizer
 from typing import Dict, List
 
 # Configure API key securely
@@ -34,12 +33,11 @@ if st.button("Analyze Email"):
         email_lines = email_text.split('\n')
         
         # Tokenize email text
-        tokens = word_tokenize(email_text)
-        stop_words = set(stopwords.words('english'))
-        filtered_tokens = [t for t in tokens if t.lower() not in stop_words]
+        tokenizer = wordpiece_tokenizer.WordPieceTokenizer()
+        tokens = tokenizer.tokenize(email_text)
         
         # Generate analysis using Gemini API
-        prompt = f"Analyze email with tokens {filtered_tokens}. "
+        prompt = f"Analyze email with tokens {tokens}. "
         if root_cause_analysis:
             prompt += "Identify root cause using causal analysis. "
         if culprit_detection:
