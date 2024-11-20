@@ -1,12 +1,7 @@
 import streamlit as st
 import google.generativeai as genai
 import re
-import nltk
-from nltk.tokenize import word_tokenize
 from typing import Dict, List
-
-# Download required NLTK data (if not already downloaded)
-nltk.download('punkt')
 
 # Configure API key securely
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
@@ -35,8 +30,8 @@ if st.button("Analyze Email"):
         email_text = email_text.strip()
         email_lines = email_text.split('\n')
         
-        # Tokenize email text
-        tokens = word_tokenize(email_text)
+        # Tokenize email text using built-in split() function
+        tokens = email_text.split()
         
         # Generate analysis using Gemini API
         prompt = f"Analyze email with tokens {tokens}. "
